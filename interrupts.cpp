@@ -273,3 +273,57 @@ simulate_trace(const std::vector<std::string> &trace_file,
 
     return std::make_tuple(execution, system_status, current_time);
 }
+
+int main(int argc, char** argv)
+{
+    auto [vectors, delays, external_files] = parse_args(argc, argv);
+
+    print_external_files(external_files);
+
+    std::string top_trace_path = argv[1];
+    std::size_t pos = top_trace_path.find_last_of("/\\");
+    if (pos == std::string::npos) {
+        g_trace_dir.clear();
+    } else {
+        g_trace_dir = top_trace_path.substr(0, pos + 1);
+    }
+
+    PCB current(0, -1, "init", 1, -1);
+
+    if (!allocate_memory(&current)) {
+        std::cerr << "ERROR! Memory allocation for init failed!" << std::endl;
+    }
+
+    std::vector<PCB> wait_queue;
+
+    std::ifstream input_file(top_trace_path);
+    if (!input_file.is_open()) {
+        std::cerr << "ERROR! Could not open top-level trace file: "
+                  << top_trace_path << std::endl;
+        return 1;
+    }
+
+    std::vector<std::string> trace_file;
+    std::string trace_line;
+
+    while (std::getline(input_file, trace_line)) {
+        if (!trace_line.empty()) {
+            trace_file.push_back(trace_line);
+        }
+    }
+    input_file.close();
+
+    auto [execution, system_status, end_time] =
+        simulate_trace(trace_file,
+                       0,
+                       vectors,
+                       delays,
+                       external_files,
+                       current,
+                       wait_queue);
+
+    write_output(execution, "execution.txt");
+    write_output(system_status, "system_status.txt");
+
+    return 0;
+}
